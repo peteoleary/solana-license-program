@@ -1,0 +1,23 @@
+[package]
+name = "solana-license-program"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+exclude_entrypoint = []
+
+[dependencies]
+solana-program = "=1.9.5"
+thiserror = "1.0.25"
+borsh = "0.9.0" 
+borsh-derive = "0.9.0" 
+
+[dev-dependencies]
+#solana-program-test = "=1.7.4"
+#solana-sdk = "=1.7.1"
+
+[lib]
+name = "license"
+crate-type = ["cdylib", "lib"]
