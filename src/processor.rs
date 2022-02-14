@@ -83,10 +83,11 @@ impl Processor {
         let rent_agreement_data =
             LicenseAccount::try_from_slice(&rent_agreement_account.data.borrow());
 
+        msg!("[RentShare] expected {}, got {} bytes", std::mem::size_of::<LicenseAccount>(), rent_agreement_account.try_data_len()?);
+
         if rent_agreement_data.is_err() {
             msg!(
-                "[RentShare] Rent agreement account data size incorrect: {}",
-                rent_agreement_account.try_data_len()?
+                "[RentShare] Rent agreement data error: {}", rent_agreement_data.unwrap_err().to_string()
             );
             return Err(ProgramError::InvalidAccountData);
         }

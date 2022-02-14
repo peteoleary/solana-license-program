@@ -1,15 +1,20 @@
 const web3 = require('@solana/web3.js')
+const BN = require('bn.js')
+
 const utils = require('./utils')
 const fs = require('fs')
 const { expect } = require('@jest/globals')
+const { async } = require('regenerator-runtime')
 
 const programId = new web3.PublicKey('91FXCUBpyaMzSb1jBjwUjYxBmUvyPLTqEzKKHvqjtY7V')
-const LICENSE_AGREEMENT_SCHEMA_SIZE = 100
+const LICENSE_AGREEMENT_SCHEMA_SIZE = 104
 const seed = 'agreement_account'
 
 test('it reads key files', async () => {
-  var wallet = utils.getKeypair('license_test')
-  expect(wallet.publicKey).not.toBeNull()
+  var account = utils.getKeypair('license_test')
+  expect(account.publicKey.toBase58().length).toBe(44)
+  const agreementPublicKey = await getAgreementPublicKey(account)
+  expect(agreementPublicKey.toBase58().length).toBe(44)
 })
 
 test('it gets a valid connection', async () => {  
@@ -20,14 +25,19 @@ test('it gets a valid connection', async () => {
    let account = await utils.airDrop(connection, wallet.publicKey)
 
     expect(account.lamports).toBeGreaterThanOrEqual(web3.LAMPORTS_PER_SOL)
+
+    const lamports = await connection.getMinimumBalanceForRentExemption(
+      LICENSE_AGREEMENT_SCHEMA_SIZE, // Currently 90
+    );
+    expect(lamports).toBeGreaterThan(0)
 })
 
-const getAgreementPublicKey =  async (account) => {
-  return await web3.PublicKey.createWithSeed(
+const getAgreementPublicKey =  (account) => {
+  return  web3.PublicKey.createWithSeed(
     account.publicKey,
       seed,
       programId,
-    );
+    )
 }
 
 test('it creates license account', async () => {
@@ -35,7 +45,7 @@ test('it creates license account', async () => {
   var connection = utils.getConnection() 
 
   var account = utils.getKeypair('license_test')
-  const agreementPublicKey = getAgreementPublicKey(account)
+  const agreementPublicKey = await getAgreementPublicKey(account)
   
     const lamports = await connection.getMinimumBalanceForRentExemption(
       LICENSE_AGREEMENT_SCHEMA_SIZE, // Currently 90
@@ -72,33 +82,45 @@ test('it creates license account', async () => {
 })
 
 test('it initializes license account', async () => {
-  const instruction = 0;
+
+  var connection = utils.getConnection() 
 
   var account = utils.getKeypair('license_test')
-  const agreementPublicKey = getAgreementPublicKey(account)
+  const agreementPublicKey = await getAgreementPublicKey(account)
+
+  console.log(`agreementPublicKey=${agreementPublicKey.toBase58()}`)
 
   const licenseePublicKey = utils.getKeypair('licensee')
   const licensorPublicKey = utils.getKeypair('licensor')
 
-  const transactionInstruction = new TransactionInstruction({
+  const deposit = 100.0
+  const rentAmount = 100.0
+  const duration = 12
+  const durationUnit = 1
+  const instruction = 0
+
+  const buffer = Buffer.from(Uint8Array.of(
+    instruction,
+    ...Array.from(licenseePublicKey.publicKey.toBytes()),
+    ...Array.from(licensorPublicKey.publicKey.toBytes()),
+    ...new BN(deposit).toArray("le", 8),
+    ...new BN(rentAmount).toArray("le", 8),
+    ...new BN(duration).toArray("le", 8),
+    ...new BN(durationUnit).toArray("le", 1),
+  ))
+
+  const transactionInstruction = new web3.TransactionInstruction({
     keys: [
       { pubkey: agreementPublicKey, isSigner: false, isWritable: true },
       { pubkey: web3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
     ],
     programId,
-    data: Buffer.from(Uint8Array.of(instruction,
-      ...Array.from(licenseePublicKey.publicKey.toBytes()),
-      ...Array.from(licensorPublicKey.publicKey.toBytes()),
-      ...new BN(deposit).toArray("le", 8),
-      ...new BN(rentAmount).toArray("le", 8),
-      ...new BN(duration).toArray("le", 8),
-      ...new BN(durationUnit).toArray("le", 1),
-    ))
+    data: buffer
   })
 
-await sendAndConfirmTransaction(
+await web3.sendAndConfirmTransaction(
     connection,
-    new Transaction().add(transactionInstruction),
+    new web3.Transaction().add(transactionInstruction),
     [account],
   );
 })
