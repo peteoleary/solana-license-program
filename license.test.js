@@ -4,10 +4,10 @@ const BN = require('bn.js')
 const utils = require('./utils')
 const fs = require('fs')
 const { expect } = require('@jest/globals')
-const { async } = require('regenerator-runtime')
+// const { async } = require('regenerator-runtime')
+const BufferLayout = require('buffer-layout')
 
 const programId = new web3.PublicKey('91FXCUBpyaMzSb1jBjwUjYxBmUvyPLTqEzKKHvqjtY7V')
-const LICENSE_AGREEMENT_SCHEMA_SIZE = 104
 const seed = 'agreement_account'
 
 test('it reads key files', async () => {
@@ -16,6 +16,37 @@ test('it reads key files', async () => {
   const agreementPublicKey = await getAgreementPublicKey(account)
   expect(agreementPublicKey.toBase58().length).toBe(44)
 })
+
+/**
+ * Layout for a public key
+ */
+ const publicKey = (property = "publicKey") => {
+  return BufferLayout.blob(32, property);
+};
+
+/*
+pub struct LicenseAccount {
+    pub status: u8, // 1
+    pub payee_pubkey: Pubkey, // 32
+    pub payer_pubkey: Pubkey,   // 32
+    pub deposit: u64,   // 8
+    pub rent_amount: u64,   // 8
+    pub duration: u64,  // 8
+    pub duration_unit: u8,  // 1
+    pub remaining_payments: u64,    // 8
+}
+*/
+
+const LICENSE_ACCOUNT_DATA_LAYOUT = BufferLayout.struct([
+  BufferLayout.u8("status"),
+  publicKey("payee_pubkey"),
+  publicKey("payer_pubkey"),
+  BufferLayout.nu64("deposit"),
+  BufferLayout.nu64("rent_amount"),
+  BufferLayout.nu64("duration"),
+  BufferLayout.u8("duration_unit"),
+  BufferLayout.nu64("remaining_payments")
+]);
 
 test('it gets a valid connection', async () => {  
     var connection = utils.getConnection()
@@ -27,7 +58,7 @@ test('it gets a valid connection', async () => {
     expect(account.lamports).toBeGreaterThanOrEqual(web3.LAMPORTS_PER_SOL)
 
     const lamports = await connection.getMinimumBalanceForRentExemption(
-      LICENSE_AGREEMENT_SCHEMA_SIZE, // Currently 90
+      LICENSE_ACCOUNT_DATA_LAYOUT.span,
     );
     expect(lamports).toBeGreaterThan(0)
 })
@@ -48,7 +79,7 @@ test('it creates license account', async () => {
   const agreementPublicKey = await getAgreementPublicKey(account)
   
     const lamports = await connection.getMinimumBalanceForRentExemption(
-      LICENSE_AGREEMENT_SCHEMA_SIZE, // Currently 90
+      LICENSE_ACCOUNT_DATA_LAYOUT.span, // Currently 90
     );
 
      /** The account that will transfer lamports to the created account */
@@ -73,13 +104,18 @@ test('it creates license account', async () => {
         basePubkey: account.publicKey,
         seed,
         lamports,
-        space: LICENSE_AGREEMENT_SCHEMA_SIZE,
+        space: LICENSE_ACCOUNT_DATA_LAYOUT.span,
         programId,
       }),
     );
     let result = await web3.sendAndConfirmTransaction(connection, transaction, [account]);
     expect(result).not.toBeNull()
 })
+
+const deposit = 100.0
+const rentAmount = 100.0
+const duration = 12
+const durationUnit = 1
 
 test('it initializes license account', async () => {
 
@@ -93,10 +129,6 @@ test('it initializes license account', async () => {
   const licenseePublicKey = utils.getKeypair('licensee')
   const licensorPublicKey = utils.getKeypair('licensor')
 
-  const deposit = 100.0
-  const rentAmount = 100.0
-  const duration = 12
-  const durationUnit = 1
   const instruction = 0
 
   const buffer = Buffer.from(Uint8Array.of(
@@ -118,9 +150,29 @@ test('it initializes license account', async () => {
     data: buffer
   })
 
-await web3.sendAndConfirmTransaction(
-    connection,
-    new web3.Transaction().add(transactionInstruction),
-    [account],
-  );
+  const transactionResult = await web3.sendAndConfirmTransaction(
+      connection,
+      new web3.Transaction().add(transactionInstruction),
+      [account],
+    );
+
+    // TODO: check transactionResult
+})
+
+test('it verifies license account data after initialization', async () => {
+  var connection = utils.getConnection() 
+
+  var account = utils.getKeypair('license_test')
+  const agreementPublicKey = await getAgreementPublicKey(account)
+
+  const agreementAccount = await connection.getAccountInfo(agreementPublicKey);
+
+  const agreementAccountData = LICENSE_ACCOUNT_DATA_LAYOUT.decode(agreementAccount.data)
+
+  expect(agreementAccountData.deposit).toBe(deposit)
+
+  const licenseePublicKey = utils.getKeypair('licensee')
+
+  expect(agreementAccountData.payee_pubkey).toEqual(licenseePublicKey.publicKey.toBytes())
+
 })

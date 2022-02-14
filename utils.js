@@ -56,7 +56,7 @@ const airDrop = async (connection, publicKey) => {
     //wait for airdrop confirmation
     await connection.confirmTransaction(airdropSignature);
 
-    return await connection.getAccountInfo(publicKey);
+    return connection.getAccountInfo(publicKey);
 }
 
 const getConnection = () => {
