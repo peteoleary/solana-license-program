@@ -5,7 +5,7 @@ use solana_program::{
 };
 
 /// Rent Share Account state stored in the Agreement Account
-#[derive(BorshSerialize, BorshDeserialize, Debug)]
+#[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, Default, PartialEq)]
 pub struct LicenseAccount {
     pub status: u8, // 1
     pub payee_pubkey: Pubkey, // 32
