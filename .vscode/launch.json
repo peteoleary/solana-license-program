@@ -5,16 +5,30 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Cargo test",
+            "cargo": {
+                "args": [
+                    "test-bpf"
+                ]
+            },
+            "program": "${cargo:program}",
+            "args": [],
+            "cwd": "${workspaceFolder}/program"
+        },
+        {
             "name": "Debug Jest Tests",
             "type": "node",
             "request": "launch",
             "runtimeArgs": [
               "--inspect-brk",
-              "${workspaceRoot}/node_modules/.bin/jest",
+              "${workspaceRoot}/js/node_modules/.bin/jest",
               "--runInBand"
             ],
             "console": "integratedTerminal",
-            "internalConsoleOptions": "neverOpen"
+            "internalConsoleOptions": "neverOpen",
+            "cwd": "${workspaceFolder}/js"
         }
     ]
 }

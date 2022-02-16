@@ -1,7 +1,8 @@
 use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 use std::convert::TryInto;
+use borsh::{BorshDeserialize, BorshSerialize};
 
-#[derive(Debug)]
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub enum LicenseInstruction {
     /// Initialize the rent contract with the agreed on terms and persist initial state in the agreement account
     ///
