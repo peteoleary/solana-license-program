@@ -24,19 +24,8 @@ test('it reads key files', async () => {
   return BufferLayout.blob(32, property);
 };
 
-/*
-pub struct LicenseAccount {
-    pub status: u8, // 1
-    pub payee_pubkey: Pubkey, // 32
-    pub payer_pubkey: Pubkey,   // 32
-    pub deposit: u64,   // 8
-    pub rent_amount: u64,   // 8
-    pub duration: u64,  // 8
-    pub duration_unit: u8,  // 1
-    pub remaining_payments: u64,    // 8
-}
-*/
 
+// license-account-properties
 const LICENSE_ACCOUNT_DATA_LAYOUT = BufferLayout.struct([
   BufferLayout.u8("status"),
   publicKey("payee_pubkey"),

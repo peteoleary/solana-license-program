@@ -1,6 +1,7 @@
 use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 use std::convert::TryInto;
 use borsh::{BorshDeserialize, BorshSerialize};
+use solana_program::clock::UnixTimestamp;
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub enum LicenseInstruction {
@@ -10,12 +11,12 @@ pub enum LicenseInstruction {
     /// 0. `[writable]` The Rent Agreement account created to manage state across 2 parties; owned by program id.
     /// 1. `[]` Sysvar Rent Account to validate rent exemption (SYSVAR_RENT_PUBKEY)
     InitializeLicenseContract {
-        payee_pubkey: Pubkey,
-        payer_pubkey: Pubkey,
-        deposit: u64,
-        rent_amount: u64,
-        duration: u64,
-        duration_unit: u8,
+        licensor_pubkey: Pubkey, // 32
+        licensee_pubkey: Pubkey,   // 32
+        asset_pubkey: Pubkey,   // 32
+        license_amount: u64,   // 8
+        license_start: UnixTimestamp,    // 8
+        license_end: UnixTimestamp
     }
 
 }
@@ -28,20 +29,23 @@ impl LicenseInstruction {
 
         Ok(match tag {
             0 => {
-                let payee_pubkey: Pubkey = Pubkey::new(&rest[..32]);
-                let payer_pubkey: Pubkey = Pubkey::new(&rest[32..64]);
-                let deposit: u64 = Self::unpack_u64(&rest, 64)?;
-                let rent_amount: u64 = Self::unpack_u64(&rest, 72)?;
-                let duration: u64 = Self::unpack_u64(&rest, 80)?;
-                let duration_unit: u8 = rest[88];
+                // license-account-properties
+                let licensor_pubkey: Pubkey = Pubkey::new(&rest[..32]);
+                let licensee_pubkey: Pubkey = Pubkey::new(&rest[32..64]);
+                let asset_pubkey: Pubkey = Pubkey::new(&rest[64..86]);
+                let license_amount: u64 = Self::unpack_u64(&rest, 86)?;
+
+                // TODO check these values!
+                let license_start: i64 = Self::unpack_i64(&rest, 94)?;
+                let license_end: i64 = Self::unpack_i64(&rest, 102)?;
 
                 Self::InitializeLicenseContract {
-                    payee_pubkey,
-                    payer_pubkey,
-                    deposit,
-                    rent_amount,
-                    duration,
-                    duration_unit,
+                    licensor_pubkey,
+                    licensee_pubkey,
+                    asset_pubkey,
+                    license_amount,
+                    license_start,
+                    license_end
                 }
             },
             _ => return Err(ProgramError::InvalidInstructionData)
@@ -53,6 +57,15 @@ impl LicenseInstruction {
             .get(start..8 + start)
             .and_then(|slice| slice.try_into().ok())
             .map(u64::from_le_bytes)
+            .ok_or(ProgramError::InvalidInstructionData)?;
+        Ok(value)
+    }
+
+    fn unpack_i64(input: &[u8], start: usize) -> Result<i64, ProgramError> {
+        let value = input
+            .get(start..8 + start)
+            .and_then(|slice| slice.try_into().ok())
+            .map(i64::from_le_bytes)
             .ok_or(ProgramError::InvalidInstructionData)?;
         Ok(value)
     }

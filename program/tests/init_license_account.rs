@@ -18,6 +18,7 @@ use std::str::FromStr;
 use license::*;
 use std::mem;
 use borsh::{BorshDeserialize, BorshSerialize};
+use futures::{future::join_all, Future, FutureExt};
 
 pub async fn airdrop(
     context: &mut ProgramTestContext,
@@ -40,13 +41,16 @@ pub async fn airdrop(
 }
 
 fn make_license_account_init_instruction_data() -> Vec<u8> {
+
+    // TODO: these are solana_sdk::pubkey::Pubkey
     let payee = Keypair::new();
     let payer = Keypair::new();
 
     let license_init_instructions = license::instruction::LicenseInstruction::InitializeLicenseContract {
            
-        payee_pubkey:  payee.pubkey(),
-        payer_pubkey: payer.pubkey(),
+        // license-account-properties
+        payee_pubkey:  solana_program::pubkey::Pubkey::new_rand(),
+        payer_pubkey: solana_program::pubkey::Pubkey::new_rand(),
         deposit: 100,
         rent_amount: 100,
         duration: 12,
@@ -61,17 +65,31 @@ const SEED: &str = "agreement_account";
 fn get_agreement_public_key(account: &Keypair, program_id: &Pubkey) -> Pubkey {
     return Pubkey::create_with_seed(&account.pubkey(), SEED, &program_id).unwrap();
 }
-fn do_init_license_account(program_id: Pubkey) {
+async fn do_init_license_account(mut context: ProgramTestContext, program_id: Pubkey, account_owner: Keypair, license_account: &Pubkey) -> license::state::LicenseAccount {
 
     let data: Vec<u8> =  make_license_account_init_instruction_data();
 
     let init_license_account_instruction = Instruction {
         program_id: program_id,
-        accounts: [].to_vec(),
+        accounts: [AccountMeta::new(*license_account, false),].to_vec(),
         data: data
     };
+
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            init_license_account_instruction
+        ],
+        Some(&account_owner.pubkey()),
+    );
+    transaction.sign(&[&account_owner], context.last_blockhash);
+    context.banks_client.process_transaction(transaction).await.unwrap();
+
+    let data_future = context.banks_client.get_account_data_with_borsh::<license::state::LicenseAccount>(*license_account);
+
+    return data_future.await.unwrap();
 }
 
+#[cfg(test)]
 mod create_license_account {
     use super::*;
 
@@ -104,7 +122,7 @@ mod create_license_account {
         let program_id =  Pubkey::from_str("91FXCUBpyaMzSb1jBjwUjYxBmUvyPLTqEzKKHvqjtY7V").unwrap();
         // TODO: get program id string from somewhere... else?
 
-        let mut program_test = ProgramTest::new("license", program_id, None);
+        let program_test = ProgramTest::new("license", program_id, None);
 
         // Start executing test.
         let mut context = program_test.start_with_context().await;
@@ -115,7 +133,7 @@ mod create_license_account {
        
         let account_owner = Keypair::new();
 
-        airdrop(& mut context, &account_owner.pubkey(), 10_000_000_000).await;
+        airdrop(& mut context, &account_owner.pubkey(), 10_000_000_000).await.unwrap();
 
         let account_address = get_agreement_public_key(&account_owner, &program_id);
 
@@ -132,11 +150,13 @@ mod create_license_account {
                 )
                 // TODO: add additional instruction
             ],
-            Some(&context.payer.pubkey()),
+            Some(&account_owner.pubkey()),
         );
         transaction.sign(&[&context.payer, &account_owner], context.last_blockhash);
         let result = context.banks_client.process_transaction(transaction).await.unwrap();
 
-        assert!(true);
+        let account_data = do_init_license_account(context, program_id, account_owner, &account_address).await;
+
+        assert!(account_data.status == license::state::AgreementStatus::Active as u8);
     }
 }

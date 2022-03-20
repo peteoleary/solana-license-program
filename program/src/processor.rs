@@ -14,8 +14,10 @@ use solana_program::{
 use crate::{
     error::LicenseError,
     instruction::LicenseInstruction,
-    state::{AgreementStatus, LicenseAccount},
+    state::{LicenseStatus, LicenseAccount},
 };
+
+use solana_program::clock::UnixTimestamp;
 
 pub struct Processor;
 impl Processor {
@@ -27,90 +29,92 @@ impl Processor {
         let instruction = LicenseInstruction::unpack(instruction_data)?;
 
         match instruction {
+            // license-account-properties
             LicenseInstruction::InitializeLicenseContract {
-                payee_pubkey,
-                payer_pubkey,
-                deposit,
-                rent_amount,
-                duration,
-                duration_unit,
+                licensor_pubkey,
+                licensee_pubkey,
+                asset_pubkey,
+                license_amount,
+                license_start,
+                license_end
             } => Self::initialize_license_contract(
                 accounts,
                 program_id,
-                payee_pubkey,
-                payer_pubkey,
-                deposit,
-                rent_amount,
-                duration,
-                duration_unit,
+                licensor_pubkey,
+                licensee_pubkey,
+                asset_pubkey,
+                license_amount,
+                license_start,
+                license_end
             )
         }
     }
 
     fn initialize_license_contract(
+        // license-account-properties
         accounts: &[AccountInfo],
         program_id: &Pubkey,
-        payee_pubkey: Pubkey,
-        payer_pubkey: Pubkey,
-        deposit: u64,
-        rent_amount: u64,
-        duration: u64,
-        duration_unit: u8,
+        licensor_pubkey: Pubkey, // 32
+        licensee_pubkey: Pubkey,   // 32
+        asset_pubkey: Pubkey,   // 32
+        license_amount: u64,   // 8
+        license_start: UnixTimestamp,    // 8
+        license_end: UnixTimestamp,
     ) -> ProgramResult {
         let accounts_iter = &mut accounts.iter();
 
-        let rent_agreement_account = next_account_info(accounts_iter)?;
-        if rent_agreement_account.owner != program_id {
-            msg!("[RentShare] Rent agreement account not owned by this program");
+        let license_agreement_account = next_account_info(accounts_iter)?;
+        if license_agreement_account.owner != program_id {
+            msg!("[License] License agreement account not owned by this program");
             return Err(ProgramError::IncorrectProgramId);
         }
 
         let solana_rent = &Rent::from_account_info(next_account_info(accounts_iter)?)?;
-        // Make sure this account is rent exemtpt
+        // Make sure this account is rent exempt
         if !solana_rent.is_exempt(
-            rent_agreement_account.lamports(),
-            rent_agreement_account.data_len(),
+            license_agreement_account.lamports(),
+            license_agreement_account.data_len(),
         ) {
             msg!(
-                "[RentShare] Rent agreement account not rent exempt. Balance: {}",
-                rent_agreement_account.lamports()
+                "[LicenseShare] License agreement account not rent exempt. Balance: {}",
+                license_agreement_account.lamports()
             );
             return Err(ProgramError::AccountNotRentExempt);
         }
 
-        // Initialize the Rent Agreement Account with the initial data
+        // Initialize the License Agreement Account with the initial data
         // Note: the structure of the data state must match the `space` reserved when account created
-        let rent_agreement_data =
-            LicenseAccount::try_from_slice(&rent_agreement_account.data.borrow());
+        let license_agreement_data =
+            LicenseAccount::try_from_slice(&license_agreement_account.data.borrow());
 
-        msg!("[RentShare] expected {}, got {} bytes", std::mem::size_of::<LicenseAccount>(), rent_agreement_account.try_data_len()?);
+        msg!("[LicenseShare] expected {}, got {} bytes", std::mem::size_of::<LicenseAccount>(), license_agreement_account.try_data_len()?);
 
-        if rent_agreement_data.is_err() {
+        if license_agreement_data.is_err() {
             msg!(
-                "[RentShare] Rent agreement data error: {}", rent_agreement_data.unwrap_err().to_string()
+                "[LicenseShare] License agreement data error: {}", license_agreement_data.unwrap_err().to_string()
             );
             return Err(ProgramError::InvalidAccountData);
         }
 
-        let mut rent_data = rent_agreement_data.unwrap();
-        if rent_data.is_initialized() {
-            msg!("[RentShare] Rent agreement already initialized");
+        let mut license_data = license_agreement_data.unwrap();
+        if license_data.is_initialized() {
+            msg!("[LicenseShare] License agreement already initialized");
             return Err(ProgramError::AccountAlreadyInitialized);
         }
 
-        rent_data.status = AgreementStatus::Active as u8;
-        rent_data.payee_pubkey = payee_pubkey;
-        rent_data.payer_pubkey = payer_pubkey;
-        rent_data.rent_amount = rent_amount;
-        rent_data.deposit = deposit;
-        rent_data.duration = duration;
-        rent_data.duration_unit = duration_unit;
-        rent_data.remaining_payments = duration;
-        rent_data.serialize(&mut &mut rent_agreement_account.data.borrow_mut()[..])?;
+        // license-account-properties
+        license_data.status = LicenseStatus::Active as u8;
+        license_data.licensor_pubkey = licensor_pubkey;
+        license_data.licensee_pubkey = licensee_pubkey;
+        license_data.asset_pubkey = asset_pubkey;
+        license_data.license_amount = license_amount;
+        license_data.license_start = license_start;
+        license_data.license_end = license_end;
+        license_data.serialize(&mut &mut license_agreement_account.data.borrow_mut()[..])?;
 
         msg!(
-            "[RentShare] Initialized rent agreement account: {:?}",
-            rent_data
+            "[LicenseShare] Initialized license agreement account: {:?}",
+            license_data
         );
 
         Ok(())
