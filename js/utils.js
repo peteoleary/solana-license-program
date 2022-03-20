@@ -18,25 +18,25 @@ const getPublicKey = (name) =>
    fs.readFileSync(`./keys/${name}.pub.txt`).toString()
   );
 
-  const getPrivateKey = (name) =>
+  const getPrivateKeyFromPath = (path) =>
   Uint8Array.from(
-    JSON.parse(fs.readFileSync(`./keys/${name}.json`))
+    JSON.parse(fs.readFileSync(path))
   );
 
-  const getKeypair = (name) =>
-  new web3.Keypair({
-    publicKey: getPublicKey(name).toBytes(),
-    secretKey: getPrivateKey(name),
-  });
+  const getKeypair = (name) => getKeypairFromPath(`./keys/${name}.json`)
 
-  const getProgramId = () => {
+  const getKeypairFromPath = (path) => web3.Keypair.fromSecretKey(getPrivateKeyFromPath(path))
+
+  const getLicenseProgramId = () => {
   try {
-    return getPublicKey("program");
+    return getKeypairFromPath('../target/deploy/license-keypair.json').publicKey;
   } catch (e) {
-    logError("Given programId is missing or incorrect");
+    logError(`getLicenseProgramId failed: ${e.message}`);
     process.exit(1);
   }
 };
+
+const licenseProgramId = getLicenseProgramId()
 
 const  getTokenBalance = async (
   pubkey,
@@ -63,4 +63,10 @@ const getConnection = () => {
   return new web3.Connection("http://localhost:8899", "confirmed");
 }
 
-module.exports = {getConnection, getPrivateKey, airDrop, getKeypair}
+const getAgreementPublicKey =  async (nft_account_pubkey) => 
+  web3.PublicKey.createWithSeed(nft_account_pubkey, 'license', licenseProgramId)
+
+
+const licenseAccountSeed = 'license_account'
+
+module.exports = {getConnection, getPublicKey, airDrop, getKeypair, getAgreementPublicKey, licenseProgramId, licenseAccountSeed}

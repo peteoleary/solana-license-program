@@ -2,6 +2,7 @@ use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 use std::convert::TryInto;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::clock::UnixTimestamp;
+use solana_program::msg;
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub enum LicenseInstruction {
@@ -31,13 +32,19 @@ impl LicenseInstruction {
             0 => {
                 // license-account-properties
                 let licensor_pubkey: Pubkey = Pubkey::new(&rest[..32]);
+                msg!("[LicenseShare] licensor_pubkey: {}", licensor_pubkey);
                 let licensee_pubkey: Pubkey = Pubkey::new(&rest[32..64]);
-                let asset_pubkey: Pubkey = Pubkey::new(&rest[64..86]);
-                let license_amount: u64 = Self::unpack_u64(&rest, 86)?;
-
+                msg!("[LicenseShare] licensee_pubkey: {}", licensee_pubkey);
+                let asset_pubkey: Pubkey = Pubkey::new(&rest[64..96]);
+                msg!("[LicenseShare] asset_pubkey: {}", asset_pubkey);
+                
+                let license_amount: u64 = Self::unpack_u64(&rest, 96)?;
+                msg!("[LicenseShare] license_amount: {}", license_amount);
                 // TODO check these values!
-                let license_start: i64 = Self::unpack_i64(&rest, 94)?;
-                let license_end: i64 = Self::unpack_i64(&rest, 102)?;
+                let license_start: i64 = Self::unpack_i64(&rest, 104)?;
+                msg!("[LicenseShare] license_start: {}", license_start);
+                let license_end: i64 = Self::unpack_i64(&rest, 112)?;
+                msg!("[LicenseShare] license_end: {}", license_end);
 
                 Self::InitializeLicenseContract {
                     licensor_pubkey,
