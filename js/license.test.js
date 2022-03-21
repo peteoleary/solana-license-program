@@ -136,7 +136,8 @@ test('it initializes license account', async () => {
 
   const transactionInstruction = new web3.TransactionInstruction({
     keys: [
-      { pubkey: agreementPublicKey, isSigner: false, isWritable: true }
+      { pubkey: agreementPublicKey, isSigner: false, isWritable: true },
+      { pubkey: web3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false }
     ],
     programId: utils.licenseProgramId,
     data: buffer
