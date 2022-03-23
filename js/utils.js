@@ -59,12 +59,12 @@ const airDrop = async (connection, publicKey) => {
     return connection.getAccountInfo(publicKey);
 }
 
-const getConnection = () => {
-  return new web3.Connection("http://localhost:8899", "confirmed");
+const getConnection = (network = "http://localhost:8899") => {
+  return new web3.Connection(network, "confirmed");
 }
 
 const getAgreementPublicKey =  async (nft_account_pubkey) => 
-  web3.PublicKey.createWithSeed(nft_account_pubkey, 'license', licenseProgramId)
+  web3.PublicKey.createWithSeed(nft_account_pubkey, licenseAccountSeed, licenseProgramId)
 
 
 const licenseAccountSeed = 'license_account'

@@ -5,6 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Launch Blockchain API Teast",
+            "program": "${workspaceFolder}/js/theblockchainapi.js",
+            "request": "launch",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "type": "pwa-node"
+        },
+        {
             "type": "lldb",
             "request": "launch",
             "name": "Debug unit tests",
@@ -29,6 +38,13 @@
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen",
             "cwd": "${workspaceFolder}/js"
-        }
+        },
+        {
+            "name": "Node.js - Debug Current File",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/js",
+            "program": "${file}"
+          }
     ]
 }

@@ -4,30 +4,11 @@ const BN = require('bn.js')
 const utils = require('./utils')
 const fs = require('fs')
 const { expect } = require('@jest/globals')
-// const { async } = require('regenerator-runtime')
 const BufferLayout = require('buffer-layout')
-
-const test_blockchain_api = require('./theblockchainapi')
 
 require('dotenv').config()
 
 require('datejs')
-
-test('it reads key files', async () => {
-  var program_owner_keys = utils.getKeypair('license_program')
-  var program_owner_pubkey = utils.getPublicKey('license_program')
-
-  expect (program_owner_keys.publicKey.toBase58()).toBe(program_owner_pubkey.toBase58())
-
-  expect (utils.licenseProgramId.toBase58()).toBe('Cb5q9Kd6P7xHtg6dJecEqJmHqXtGRQ25TLkziwSx3AhE')
-
-  var nft_account = utils.getKeypair('nft_account')
-  var licensee_account = utils.getKeypair('licensee')
-
-  const agreementPublicKey = await utils.getAgreementPublicKey(nft_account.publicKey)
-  
-  expect(agreementPublicKey.toBase58().length).toBe(44)
-})
 
 /**
  * Layout for a public key
@@ -59,30 +40,10 @@ const LICENSE_ACCOUNT_DATA_LAYOUT = BufferLayout.struct([
   BufferLayout.ns64("license_end")
 ]);
 
-test('it gets a valid connection', async () => {  
-    var connection = utils.getConnection()
 
-    var wallet = utils.getKeypair('licensee')
-
-   let account = await utils.airDrop(connection, wallet.publicKey)
-
-    expect(account.lamports).toBeGreaterThanOrEqual(web3.LAMPORTS_PER_SOL)
-
-    const lamports = await connection.getMinimumBalanceForRentExemption(
-      LICENSE_ACCOUNT_DATA_LAYOUT.span,
-    );
-    expect(lamports).toBeGreaterThan(0)
-})
-
-function get_test_accounts() {
-  return [utils.getKeypair('nft_account'), utils.getKeypair('licensee'), utils.getKeypair('licensor')]
-}
-
-test('it creates license account', async () => {
+const create_license_account =  async (network, nft_account, licensee_account, licensor_account) => {
 
   var connection = utils.getConnection() 
-
-  const [nft_account, licensee_account, licensor_account] = get_test_accounts()
 
   // TODO: create test NFT here
 
@@ -108,16 +69,14 @@ test('it creates license account', async () => {
 
     // NOTE: remember the order of signers is important here
     let result = await web3.sendAndConfirmTransaction(connection, transaction, [licensee_account, nft_account]);
-    expect(result).not.toBeNull()
-})
+
+}
 
 const rentAmount = 100.0
 
-test('it initializes license account', async () => {
+const init_license_account =  async (network, nft_account, licensee_account, licensor_account) => {
 
   var connection = utils.getConnection() 
-
-  const [nft_account, licensee_account, licensor_account] = get_test_accounts()
 
   const agreementPublicKey = await utils.getAgreementPublicKey(nft_account.publicKey)
 
@@ -156,12 +115,10 @@ test('it initializes license account', async () => {
     );
 
     // TODO: check transactionResult
-})
+}
 
-test('it verifies license account data after initialization', async () => {
+const get_license_account =  async (network, nft_account, licensee_account, licensor_account) => {
   var connection = utils.getConnection() 
-
-  const [nft_account, licensee_account, licensor_account] = get_test_accounts()
 
   const agreementPublicKey = await utils.getAgreementPublicKey(nft_account.publicKey)
 
@@ -169,11 +126,7 @@ test('it verifies license account data after initialization', async () => {
 
   const agreementAccountData = LICENSE_ACCOUNT_DATA_LAYOUT.decode(agreementAccount.data)
 
-  expect(agreementAccountData.status).not.toBe(0)
+  return agreementAccountData
+}
 
-  expect(new web3.PublicKey(agreementAccountData.licensor_pubkey).toBase58()).toBe(licensor_account.publicKey.toBase58())
-})
-
-test('it creates a test NFT', async () => {
-  await test_blockchain_api()
-})
+module.exports = {create_license_account, init_license_account, get_license_account}

@@ -11,6 +11,8 @@
     "@solana/web3.js": "^1.34.0",
     "bn.js": "^5.2.0",
     "buffer-layout": "^1.2.2",
-    "datejs": "^1.0.0-rc3"
+    "datejs": "^1.0.0-rc3",
+    "dotenv": "^16.0.0",
+    "theblockchainapi": "^1.0.939"
   }
 }

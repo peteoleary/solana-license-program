@@ -11,3 +11,9 @@ solana airdrop 10 --keypair js/keys/license_program.json
 cargo build-bpf
 solana program deploy ./target/deploy/license.so --keypair js/keys/license_program.json
 cargo build-bpf && solana program deploy ./target/deploy/license.so --program-id Cb5q9Kd6P7xHtg6dJecEqJmHqXtGRQ25TLkziwSx3AhE
+
+# Testing
+
+Before testing, airdop SOL to the licensee account to pay for creating the license account
+
+solana airdrop 10 5Tna9RJ6Fpd1TAEszCDjvTLW3KSpsSNzSEqu7Xp8KhXF
