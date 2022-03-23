@@ -41,13 +41,13 @@ const LICENSE_ACCOUNT_DATA_LAYOUT = BufferLayout.struct([
 ]);
 
 
-const create_license_account =  async (network, nft_account, licensee_account, licensor_account) => {
+const create_license_account =  async (nft_account, licensee_account, licensor_account) => {
 
   var connection = utils.getConnection() 
 
   // TODO: create test NFT here
 
-  const agreementPublicKey = await web3.PublicKey.createWithSeed(nft_account.publicKey, 'license', utils.licenseProgramId)
+  const agreementPublicKey = await web3.PublicKey.createWithSeed(nft_account.publicKey, utils.licenseAccountSeed, utils.licenseProgramId)
   
     const lamports = await connection.getMinimumBalanceForRentExemption(
       LICENSE_ACCOUNT_DATA_LAYOUT.span, // Currently 90
@@ -60,7 +60,7 @@ const create_license_account =  async (network, nft_account, licensee_account, l
         fromPubkey: licensee_account.publicKey,
         newAccountPubkey: agreementPublicKey,
         basePubkey: nft_account.publicKey,
-        seed: 'license',
+        seed: utils.licenseAccountSeed,
         lamports: lamports,
         space: LICENSE_ACCOUNT_DATA_LAYOUT.span,
         programId: utils.licenseProgramId
@@ -74,7 +74,7 @@ const create_license_account =  async (network, nft_account, licensee_account, l
 
 const rentAmount = 100.0
 
-const init_license_account =  async (network, nft_account, licensee_account, licensor_account) => {
+const init_license_account =  async (nft_account, licensee_account, licensor_account) => {
 
   var connection = utils.getConnection() 
 
@@ -117,7 +117,7 @@ const init_license_account =  async (network, nft_account, licensee_account, lic
     // TODO: check transactionResult
 }
 
-const get_license_account =  async (network, nft_account, licensee_account, licensor_account) => {
+const get_license_account =  async (nft_account, licensee_account, licensor_account) => {
   var connection = utils.getConnection() 
 
   const agreementPublicKey = await utils.getAgreementPublicKey(nft_account.publicKey)
